@@ -18,7 +18,7 @@ if (command == "init")
     File.WriteAllText(".git/HEAD", "ref: refs/heads/main\n");
     Console.WriteLine("Initialized git directory");
 }
-else if (command == "cat-file" && args.Length == 3 && args[0] == "-p")
+else if (command == "cat-file" && args.Length == 3 && args[1] == "-p")
 {
     // See: https://git-scm.com/book/en/v2/Git-Internals-Git-Objects
     string objectHash = args[2];
@@ -30,6 +30,7 @@ else if (command == "cat-file" && args.Length == 3 && args[0] == "-p")
 
     using var reader = new StreamReader(zlibStream);
     string content = reader.ReadToEnd();
+
     // find null byte, which separates header from content
     // header contains object type and size followed by null byte
     int nullByteIndex = content.IndexOf('\0');
