@@ -1,6 +1,10 @@
 using System;
 using System.IO;
 using System.IO.Compression;
+using System.Runtime.Intrinsics.Arm;
+using System.Security.Cryptography;
+using System.Text;
+using System.Text.Unicode;
 
 if (args.Length < 1)
 {
@@ -46,6 +50,41 @@ else if (command == "cat-file" && args.Length == 3 && args[1] == "-p")
     string body = content[(nullByteIndex + 1)..];
 
     Console.Write(body);
+}
+else if (command == "hash-object" && args.Length > 1)
+{
+    // See: https://git-scm.com/docs/git-hash-object
+    // See: https://git-scm.com/book/en/v2/Git-Internals-Git-Objects
+    bool writeObject = args.Length > 2 && args[1] == "-w";
+    string filePath = args[^1];
+
+    var fileSize = new FileInfo(filePath).Length;
+
+    // Assums text 
+    var fileContent = File.ReadAllBytes(filePath);
+
+    string header = $"blob {fileContent.Length}\0";
+    byte[] headerBytes = Encoding.UTF8.GetBytes(header);
+
+    byte[] contentBytes = [..headerBytes, ..fileContent];
+
+    byte[] hashBytes = SHA1.HashData(contentBytes);
+    string hashString = Convert.ToHexStringLower(hashBytes);
+
+    if (writeObject)
+    {
+        string dirName = hashString[..2];
+        string fileName = hashString[2..];
+        string objectDirPath = Path.Combine(".git", "objects", dirName);
+        Directory.CreateDirectory(objectDirPath);
+
+        var destinationPath = Path.Combine(objectDirPath, fileName);
+        using var fileStream = File.OpenWrite(destinationPath);
+        using var zlibStream = new ZLibStream(fileStream, CompressionMode.Compress);
+        zlibStream.Write(contentBytes);
+    }
+
+    Console.WriteLine(hashString);
 }
 else
 {
